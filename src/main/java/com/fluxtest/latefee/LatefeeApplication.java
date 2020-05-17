@@ -39,20 +39,20 @@ public class LatefeeApplication {
 	WebClient transactionClient;
 
 	@PostMapping("latefee")
-	Mono<UUID> postLateFeeRequest(@RequestBody IdHolder idHolder) {
-		return Mono.just(idHolder).flatMap(idh->
-			transactionClient.get()
-			.uri(uriBuilder->uriBuilder.path("/transaction/{id}").build(idh.getId()))
-			.retrieve()
-			.bodyToMono(SomeEntity.class)
-			.flatMap(transaction->
-				transactionClient
-				.post()
-				.uri("/latefee")
-				.bodyValue(LateFeeEntity.builder().id(transaction.getId()).timestamp(LocalDateTime.now()).build())
-				.retrieve()
-				.bodyToMono(UUID.class)
-				.flatMap(si->Mono.just(UUID.randomUUID())))
-		);
+	Mono<UUID> postLateFeeRequest(@RequestBody Mono<IdHolder> idHolder) {
+		 
+		Mono<LateFeeEntity> lateFeeMono = transactionClient.post()
+		.uri("/transactionbyid")
+		.body(idHolder, IdHolder.class)
+		.retrieve()
+		.bodyToMono(SomeEntity.class)
+		.map(se->LateFeeEntity.builder().id(se.getId()).timestamp(LocalDateTime.now()).build());
+
+		return transactionClient
+		.post()
+		.uri("/latefee")
+		.body(lateFeeMono, LateFeeEntity.class)
+		.retrieve()
+		.bodyToMono(UUID.class);
 	}
 }
